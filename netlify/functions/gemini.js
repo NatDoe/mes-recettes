@@ -20,6 +20,9 @@ exports.handler = async (event) => {
     const { prompt } = JSON.parse(event.body);
     const apiKey = process.env.GEMINI_API_KEY;
 
+    console.log('API key present:', !!apiKey);
+    console.log('API key length:', apiKey ? apiKey.length : 0);
+
     if (!apiKey) {
       return { statusCode: 500, headers, body: JSON.stringify({ error: 'GEMINI_API_KEY not set' }) };
     }
@@ -41,14 +44,19 @@ exports.handler = async (event) => {
 
       const req = https.request(options, (res) => {
         let body = '';
+        console.log('Gemini status:', res.statusCode);
         res.on('data', chunk => body += chunk);
         res.on('end', () => {
+          console.log('Gemini response:', body.substring(0, 300));
           try { resolve(JSON.parse(body)); }
           catch (e) { reject(new Error('Invalid JSON: ' + body)); }
         });
       });
 
-      req.on('error', reject);
+      req.on('error', (e) => {
+        console.log('Request error:', e.message);
+        reject(e);
+      });
       req.write(payload);
       req.end();
     });
@@ -56,6 +64,7 @@ exports.handler = async (event) => {
     return { statusCode: 200, headers, body: JSON.stringify(data) };
 
   } catch (err) {
+    console.log('Handler error:', err.message);
     return { statusCode: 500, headers, body: JSON.stringify({ error: err.message }) };
   }
 };
