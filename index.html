@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Mes Recettes">
+  <meta name="theme-color" content="#141414">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icon.png">
+  <title>Mes Recettes</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/poppins@5.0.8/index.min.css">
+  <style>
+    * { box-sizing:border-box; margin:0; padding:0; font-family:'Poppins','Trebuchet MS',Verdana,sans-serif !important; -webkit-tap-highlight-color:transparent; }
+    :root {
+      --bg:#141414; --bg2:#1E1E1E; --bg3:#252525;
+      --purple:#7C3AED; --purple-light:#9D5FF5; --purple-glow:rgba(124,58,237,0.25);
+      --text:#FFFFFF; --text2:#A0A0A0; --text3:#505050;
+      --border:rgba(255,255,255,0.07); --gold:#F59E0B; --green-s:#22C55E; --red:#EF4444;
+    }
+    html, body { height:100%; background:var(--bg); overflow:hidden; }
+    .app {
+      width:100%; max-width:430px; margin:0 auto;
+      background:var(--bg); height:100dvh;
+      display:flex; flex-direction:column;
+      overflow:hidden;
+      border-left:0.5px solid rgba(255,255,255,0.05);
+      border-right:0.5px solid rgba(255,255,255,0.05);
+    }
+    .screen { display:none; flex-direction:column; flex:1; overflow:hidden; animation:fadeUp 0.22s ease; }
+    .screen.active { display:flex; }
+    @keyframes fadeUp { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+
+    /* HOME */
+    .home-header { padding:env(safe-area-inset-top, 52px) 24px 22px; padding-top:max(env(safe-area-inset-top),52px); position:relative; overflow:hidden; flex-shrink:0; }
+    .home-header::before { content:''; position:absolute; top:-80px; right:-60px; width:220px; height:220px; border-radius:50%; background:radial-gradient(circle,rgba(124,58,237,0.35) 0%,transparent 70%); pointer-events:none; }
+    .home-top { display:flex; justify-content:space-between; align-items:center; }
+    .home-greeting { font-size:12px; font-weight:400; color:var(--text2); }
+    .home-name { font-size:24px; font-weight:700; color:var(--text); margin-top:2px; letter-spacing:-0.3px; }
+    .avatar { width:42px; height:42px; border-radius:50%; background:var(--bg3); border:2px solid var(--purple); display:flex; align-items:center; justify-content:center; font-size:20px; }
+    .count-row { display:flex; gap:10px; margin-top:18px; }
+    .count-chip { background:var(--bg2); border-radius:12px; padding:10px 16px; border:0.5px solid var(--border); display:flex; align-items:center; gap:8px; }
+    .count-chip-dot { width:6px; height:6px; border-radius:50%; background:var(--purple); }
+    .count-chip-num { font-size:18px; font-weight:700; color:var(--text); }
+    .count-chip-label { font-size:11px; font-weight:400; color:var(--text2); }
+    .search-row { display:flex; gap:8px; padding:14px 20px; align-items:center; flex-shrink:0; }
+    .search-wrap { flex:1; position:relative; }
+    .search-icon { position:absolute; left:12px; top:50%; transform:translateY(-50%); font-size:13px; opacity:0.35; }
+    .search { width:100%; padding:10px 12px 10px 34px; border-radius:14px; border:0.5px solid var(--border); background:var(--bg2); font-size:13px; font-weight:300; color:var(--text); }
+    .search::placeholder { color:var(--text3); }
+    .search:focus { outline:none; border-color:var(--purple); }
+    .add-fab { width:40px; height:40px; border-radius:14px; background:var(--purple); border:none; cursor:pointer; color:white; font-size:26px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+    .filter-row { display:flex; gap:6px; padding:0 20px 14px; overflow-x:auto; flex-shrink:0; }
+    .filter-row::-webkit-scrollbar { display:none; }
+    .pill { padding:6px 14px; border-radius:20px; font-size:11px; font-weight:500; border:0.5px solid var(--border); background:var(--bg2); cursor:pointer; white-space:nowrap; color:var(--text2); }
+    .pill.active { background:var(--purple); border-color:var(--purple); color:white; }
+    .feed { flex:1; overflow-y:auto; padding:0 20px 20px; display:flex; flex-direction:column; gap:12px; -webkit-overflow-scrolling:touch; }
+    .feed::-webkit-scrollbar { display:none; }
+    .empty-state { display:flex; flex-direction:column; align-items:center; justify-content:center; flex:1; gap:12px; color:var(--text3); padding:40px 20px; }
+    .empty-state .icon { font-size:48px; opacity:0.4; }
+    .empty-state p { font-size:13px; font-weight:300; text-align:center; line-height:1.6; }
+
+    /* CARDS */
+    .recipe-card { border-radius:20px; background:var(--bg2); border:0.5px solid var(--border); overflow:hidden; cursor:pointer; transition:transform 0.15s; flex-shrink:0; }
+    .recipe-card:active { transform:scale(0.98); }
+    .card-hero { height:150px; position:relative; background:var(--bg3); overflow:hidden; }
+    .card-hero-img { width:100%;height:100%;object-fit:cover;opacity:0.8; }
+    .card-hero-placeholder { width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:52px; }
+    .card-hero-overlay { position:absolute;inset:0;background:linear-gradient(to top,rgba(14,14,14,0.88) 0%,transparent 55%); }
+    .card-hero-rating { position:absolute;top:10px;right:10px;background:rgba(0,0,0,0.55);backdrop-filter:blur(6px);border-radius:20px;padding:3px 10px;font-size:12px;color:#F59E0B;letter-spacing:1px;border:0.5px solid rgba(255,255,255,0.1); }
+    .card-hero-tags { position:absolute;bottom:10px;left:10px;display:flex;gap:4px;flex-wrap:wrap; }
+    .card-tag { font-size:10px;font-weight:500;padding:3px 9px;border-radius:20px;background:rgba(124,58,237,0.3);color:rgba(255,255,255,0.9);border:0.5px solid rgba(124,58,237,0.5); }
+    .card-body { padding:12px 14px 14px; }
+    .card-title { font-size:14px;font-weight:600;color:var(--text);margin-bottom:3px; }
+    .card-desc { font-size:11px;font-weight:300;color:var(--text2);line-height:1.5; }
+    .card-foot { display:flex;justify-content:space-between;align-items:center;margin-top:8px; }
+    .card-date { font-size:10px;color:var(--text3); }
+    .card-stars { font-size:12px;color:#F59E0B;letter-spacing:1px; }
+
+    /* DETAIL */
+    .detail-hero { height:260px; position:relative; background:var(--bg3); overflow:hidden; flex-shrink:0; }
+    .detail-hero-img { width:100%;height:100%;object-fit:cover;opacity:0.75; }
+    .detail-hero-placeholder { width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:80px; }
+    .detail-hero-overlay { position:absolute;inset:0;background:linear-gradient(to top,rgba(14,14,14,0.92) 0%,rgba(14,14,14,0.2) 60%); }
+    .detail-back { position:absolute;top:max(env(safe-area-inset-top),52px);left:16px;width:36px;height:36px;border-radius:12px;background:rgba(255,255,255,0.1);backdrop-filter:blur(6px);border:0.5px solid rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;cursor:pointer;color:white;font-size:18px; }
+    .detail-edit-btn { position:absolute;top:max(env(safe-area-inset-top),52px);right:16px;display:flex;align-items:center;gap:6px;padding:7px 12px;border-radius:12px;background:rgba(124,58,237,0.5);backdrop-filter:blur(6px);border:0.5px solid rgba(124,58,237,0.7);cursor:pointer;color:white;font-size:12px;font-weight:500; }
+    .detail-expand-btn { position:absolute;bottom:16px;right:16px;width:32px;height:32px;border-radius:10px;background:rgba(0,0,0,0.5);backdrop-filter:blur(6px);border:0.5px solid rgba(255,255,255,0.2);cursor:pointer;color:white;font-size:16px;display:flex;align-items:center;justify-content:center; }
+    .lightbox { display:none;position:absolute;inset:0;background:rgba(0,0,0,0.97);z-index:200;flex-direction:column;align-items:center;justify-content:center;padding:20px; }
+    .lightbox.open { display:flex; }
+    .lightbox img { width:100%;max-height:80%;object-fit:contain;border-radius:8px; }
+    .btn-delete { background:transparent;color:#EF4444;border:0.5px solid rgba(239,68,68,0.4);border-radius:14px;padding:13px;font-size:14px;font-weight:600;cursor:pointer;width:100%;margin-top:4px; }
+    .detail-hero-info { position:absolute;bottom:16px;left:20px;right:20px; }
+    .detail-hero-tags { display:flex;gap:4px;margin-bottom:6px;flex-wrap:wrap; }
+    .detail-title { font-size:20px;font-weight:700;color:white;line-height:1.2; }
+    .detail-body { flex:1;overflow-y:auto;padding:20px;background:var(--bg);display:flex;flex-direction:column;gap:14px;-webkit-overflow-scrolling:touch; }
+    .detail-body::-webkit-scrollbar { display:none; }
+    .rating-card { background:var(--bg2);border-radius:18px;padding:16px;border:0.5px solid var(--border); }
+    .rating-card-label { font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--text2);margin-bottom:10px; }
+    .stars-row { display:flex;gap:6px;align-items:center; }
+    .star-btn { background:none;border:none;cursor:pointer;font-size:30px;padding:4px;line-height:1;transition:transform 0.1s; }
+    .star-btn:active { transform:scale(1.2); }
+    .rating-sub { font-size:12px;color:var(--text3);margin-left:8px; }
+    .rating-confirm { font-size:11px;font-weight:500;color:var(--green-s);margin-top:8px;min-height:16px; }
+    .section-header { display:flex;justify-content:space-between;align-items:center;margin-bottom:10px; }
+    .section-title { font-size:15px;font-weight:600;color:var(--text); }
+    .section-badge { background:var(--bg3);border-radius:8px;padding:3px 9px;font-size:11px;color:var(--text2); }
+    .ing-list { display:flex;flex-direction:column; }
+    .ing-item { display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:0.5px solid var(--border);font-size:12px;font-weight:300;color:var(--text2); }
+    .ing-item:last-child { border-bottom:none; }
+    .ing-dot { width:6px;height:6px;border-radius:50%;background:var(--purple);flex-shrink:0; }
+    .steps-list { display:flex;flex-direction:column;gap:10px; }
+    .step-item { display:flex;gap:12px;background:var(--bg2);border-radius:14px;padding:12px; }
+    .step-num { width:24px;height:24px;border-radius:8px;background:var(--purple);color:white;font-size:10px;font-weight:600;display:flex;align-items:center;justify-content:center;flex-shrink:0; }
+    .step-text { font-size:12px;font-weight:300;color:var(--text2);line-height:1.7; }
+
+    /* ADD */
+    .add-header { background:var(--bg2);padding:20px 22px 20px;padding-top:max(env(safe-area-inset-top),52px);border-bottom:0.5px solid var(--border);position:relative;overflow:hidden;flex-shrink:0; }
+    .add-header::before { content:'';position:absolute;top:-60px;right:-40px;width:160px;height:160px;border-radius:50%;background:radial-gradient(circle,var(--purple-glow) 0%,transparent 70%); }
+    .add-back { position:absolute;top:max(env(safe-area-inset-top),52px);left:16px;width:36px;height:36px;border-radius:12px;background:var(--bg3);border:0.5px solid var(--border);cursor:pointer;color:white;font-size:18px;display:flex;align-items:center;justify-content:center; }
+    .add-header-title { font-size:22px;font-weight:700;color:var(--text);padding-left:48px;letter-spacing:-0.3px; }
+    .add-header-title span { color:var(--purple-light); }
+    .add-body { flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:14px;-webkit-overflow-scrolling:touch;padding-bottom:max(env(safe-area-inset-bottom),20px); }
+    .add-body::-webkit-scrollbar { display:none; }
+    .field-label { font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--text2);margin-bottom:6px; }
+    .field-input { width:100%;padding:12px 14px;border-radius:14px;border:0.5px solid var(--border);background:var(--bg2);font-size:14px;font-weight:300;color:var(--text); }
+    .field-input::placeholder { color:var(--text3); }
+    .field-input:focus { outline:none;border-color:var(--purple); }
+    textarea.field-input { resize:none;line-height:1.7; }
+    .upload-zone { border:1.5px dashed rgba(124,58,237,0.4);border-radius:16px;height:100px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;background:rgba(124,58,237,0.05);gap:6px; }
+    .upload-zone input { display:none; }
+    .upload-label { font-size:11px;color:var(--text2); }
+    .photo-preview { width:100%;height:100px;object-fit:cover;border-radius:16px;display:none; }
+    .new-stars-row { display:flex;gap:8px;margin-top:4px; }
+    .new-star-btn { background:none;border:none;cursor:pointer;font-size:30px;padding:4px;line-height:1; }
+    .btn-delete { background:transparent;color:#EF4444;border:0.5px solid rgba(239,68,68,0.4);border-radius:14px;padding:13px;font-size:14px;font-weight:600;cursor:pointer;width:100%;margin-top:4px; }
+    .field-row { display:flex;gap:8px;align-items:flex-start; }
+    .field-row .field-input { flex:1; }
+    .mic-field-btn { width:38px;height:38px;min-width:38px;border-radius:12px;border:0.5px solid var(--border);background:var(--bg3);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0; }
+    .mic-field-btn.listening { background:#EF4444;border-color:#EF4444;animation:pulse 1.2s infinite; }
+    @keyframes pulse { 0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,0.4)} 50%{box-shadow:0 0 0 8px rgba(239,68,68,0)} }
+    .mic-field-status { font-size:10px;color:var(--text3);margin-top:3px;min-height:13px;font-weight:500; }
+    .mic-field-status.on { color:#EF4444; }
+    .mic-field-status.ok { color:var(--green-s); }
+    .voice-zone { background:var(--bg2);border-radius:18px;border:0.5px solid var(--border);padding:18px;display:flex;flex-direction:column;align-items:center;gap:12px; }
+    .voice-zone-label { font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--text2);align-self:flex-start; }
+    .voice-hint { font-size:11px;font-weight:300;color:var(--text3);text-align:center;line-height:1.6; }
+    .mic-btn { width:68px;height:68px;border-radius:50%;background:var(--purple);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:28px;transition:transform 0.15s,background 0.2s; }
+    .mic-btn.listening { background:#EF4444;animation:pulse-big 1.2s infinite; }
+    .mic-btn:active { transform:scale(0.94); }
+    @keyframes pulse-big { 0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,0.5)} 50%{box-shadow:0 0 0 14px rgba(239,68,68,0)} }
+    .voice-transcript { width:100%;font-size:12px;font-weight:300;color:var(--text2);line-height:1.6;text-align:center;display:none;max-height:80px;overflow:hidden; }
+    .voice-status { font-size:11px;font-weight:500;color:var(--purple-light);min-height:16px;text-align:center; }
+    .voice-status.error { color:#EF4444; }
+    .voice-status.success { color:var(--green-s); }
+    .divider { display:flex;align-items:center;gap:10px; }
+    .divider-line { flex:1;height:0.5px;background:var(--border); }
+    .divider-text { font-size:10px;color:var(--text3);font-weight:500;white-space:nowrap; }
+    .dots span { animation:dot 1.2s infinite;display:inline-block; }
+    .dots span:nth-child(2){animation-delay:0.2s} .dots span:nth-child(3){animation-delay:0.4s}
+    @keyframes dot{0%,80%,100%{opacity:0.2}40%{opacity:1}}
+    .apikey-row { display:none; }
+    .apikey-input { display:none; }
+    .apikey-save-btn { display:none; }
+    .nav-bar { display:flex; border-top:0.5px solid var(--border); background:var(--bg2); flex-shrink:0; padding-bottom:env(safe-area-inset-bottom,0); }
+    .nav-item { flex:1; padding:10px 6px 8px; display:flex; flex-direction:column; align-items:center; gap:3px; cursor:pointer; border:none; background:none; }
+    .nav-icon { font-size:20px; }
+    .nav-label { font-size:10px; color:var(--text3); font-weight:500; }
+    .nav-item.active .nav-label { color:var(--purple-light); }
+    .settings-body { flex:1; overflow-y:auto; padding:20px; display:flex; flex-direction:column; gap:18px; }
+    .settings-body::-webkit-scrollbar { display:none; }
+    .settings-section-label { font-size:10px; font-weight:600; letter-spacing:2px; text-transform:uppercase; color:var(--text2); margin-bottom:10px; }
+    .settings-card { background:var(--bg2); border-radius:18px; border:0.5px solid var(--border); padding:16px; display:flex; flex-direction:column; gap:10px; }
+    .settings-desc { font-size:12px; font-weight:300; color:var(--text2); line-height:1.6; }
+    .settings-desc strong { color:var(--purple-light); font-weight:600; }
+    .settings-input { width:100%; padding:11px 14px; border-radius:12px; border:0.5px solid var(--border); background:var(--bg3); font-size:13px; color:var(--text); font-family:'Poppins',sans-serif !important; }
+    .settings-input:focus { outline:none; border-color:var(--purple); }
+    .settings-btn { background:var(--purple); color:white; border:none; border-radius:12px; padding:11px; font-size:13px; font-weight:600; cursor:pointer; width:100%; }
+    .settings-key-status { font-size:11px; font-weight:500; min-height:14px; }
+    .settings-key-status.success { color:var(--green-s); }
+    .settings-key-saved { display:none; align-items:center; gap:8px; background:rgba(34,197,94,0.08); border:0.5px solid rgba(34,197,94,0.25); border-radius:12px; padding:10px 14px; }
+    .settings-key-saved-dot { width:7px; height:7px; border-radius:50%; background:var(--green-s); flex-shrink:0; }
+    .settings-key-saved-text { font-size:12px; color:var(--green-s); font-weight:500; flex:1; }
+    .settings-key-reset { background:none; border:none; color:var(--text3); font-size:11px; cursor:pointer; text-decoration:underline; }
+    .time-row { display:flex; gap:8px; align-items:center; }
+    .time-input { width:90px; padding:12px 14px; border-radius:14px; border:0.5px solid var(--border); background:var(--bg2); font-size:14px; font-weight:300; color:var(--text); text-align:center; font-family:'Poppins',sans-serif !important; }
+    .time-input:focus { outline:none; border-color:var(--purple); }
+    .time-unit { font-size:13px; font-weight:400; color:var(--text2); }
+    .meta-row { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:4px; }
+    .meta-chip { display:flex; align-items:center; gap:5px; background:var(--bg2); border:0.5px solid var(--border); border-radius:10px; padding:6px 12px; font-size:12px; color:var(--text2); }
+
+
+
+    /* install banner */
+    .install-banner { display:none;position:fixed;bottom:0;left:0;right:0;background:var(--bg2);border-top:0.5px solid var(--border);padding:14px 20px;padding-bottom:max(env(safe-area-inset-bottom),14px);z-index:100;flex-direction:column;gap:8px; }
+    .install-banner.show { display:flex; }
+    .install-banner-text { font-size:12px;color:var(--text2);line-height:1.5; }
+    .install-banner-text strong { color:var(--text);font-weight:600; }
+    .install-banner-row { display:flex;gap:8px; }
+    .install-btn { flex:1;background:var(--purple);color:white;border:none;border-radius:12px;padding:10px;font-size:13px;font-weight:600;cursor:pointer; }
+    .install-close { width:40px;background:var(--bg3);border:0.5px solid var(--border);border-radius:12px;color:var(--text2);cursor:pointer;font-size:16px; }
+  </style>
+</head>
+<body>
+<div class="app">
+
+  <!-- HOME -->
+  <div class="screen active" id="screen-home">
+    <div class="home-header">
+      <div class="home-top">
+        <div><div class="home-greeting">Bonjour, chef 👨‍🍳</div><div class="home-name">Mes recettes</div></div>
+        <div class="avatar">🍳</div>
+      </div>
+      <div class="count-row">
+        <div class="count-chip"><div class="count-chip-dot"></div><div class="count-chip-num" id="stat-count">0</div><div class="count-chip-label">recette</div></div>
+        <div class="count-chip"><div class="count-chip-dot"></div><div class="count-chip-num" id="stat-top">–</div><div class="count-chip-label">catégorie fav.</div></div>
+      </div>
+    </div>
+    <div class="search-row">
+      <div class="search-wrap">
+        <span class="search-icon">🔍</span>
+        <input class="search" placeholder="Rechercher une recette..." oninput="filterCards(this.value)">
+      </div>
+      <button class="add-fab" onclick="goTo('screen-add')">+</button>
+    </div>
+    <div class="filter-row" id="filter-row">
+      <button class="pill active" onclick="filterTag('',this)">Tout</button>
+    </div>
+    <div class="feed" id="feed"></div>
+    <div class="nav-bar">
+      <button class="nav-item active"><div class="nav-icon">🍽</div><div class="nav-label" style="color:var(--purple-light)">Recettes</div></button>
+      <button class="nav-item" onclick="goTo('screen-settings')"><div class="nav-icon">⚙️</div><div class="nav-label">Réglages</div></button>
+    </div>
+  </div>
+
+  <!-- DETAIL -->
+  <div class="screen" id="screen-detail">
+    <div class="detail-hero">
+      <img class="detail-hero-img" id="d-img" src="" alt="" style="display:none">
+      <div class="detail-hero-placeholder" id="d-placeholder"></div>
+      <div class="detail-hero-overlay"></div>
+      <button class="detail-back" onclick="goTo('screen-home')">←</button>
+      <button class="detail-edit-btn" onclick="openEdit(currentIdx)">✏️ Modifier</button>
+      <button class="detail-expand-btn" id="detail-expand-btn" onclick="openLightbox()" style="display:none">⤢</button>
+      <div class="detail-hero-info">
+        <div class="detail-hero-tags" id="d-tags"></div>
+        <div class="detail-title" id="d-title"></div>
+      </div>
+    </div>
+    <!-- LIGHTBOX -->
+    <div class="lightbox" id="lightbox" onclick="closeLightbox()">
+      <img id="lightbox-img" src="" alt="">
+      <div style="font-size:12px;color:rgba(255,255,255,0.4);margin-top:12px;">Appuyer pour fermer</div>
+    </div>
+    <div class="detail-body">
+      <div class="rating-card">
+        <div class="rating-card-label">Ma note</div>
+        <div class="stars-row"><div id="detail-stars" style="display:flex;gap:4px;"></div><span class="rating-sub" id="detail-stars-sub">/ 5</span></div>
+        <div class="rating-confirm" id="rating-confirm"></div>
+      </div>
+      <div class="meta-row" id="d-meta"></div>
+      <div>
+        <div class="section-header"><div class="section-title">Ingrédients</div><div class="section-badge" id="d-ing-count"></div></div>
+        <div class="ing-list" id="d-ingredients"></div>
+      </div>
+      <div>
+        <div class="section-header"><div class="section-title">Méthode</div></div>
+        <div class="steps-list" id="d-steps"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ADD -->
+  <div class="screen" id="screen-add">
+    <div class="add-header">
+      <button class="add-back" onclick="goTo('screen-home')">←</button>
+      <div class="add-header-title">Nouvelle <span>recette</span></div>
+    </div>
+    <div class="add-body">
+      <!-- VOICE IA -->
+      <div class="voice-zone">
+        <div class="voice-zone-label">🎙 Décrire à l'oral</div>
+        <div class="voice-hint">Décris ta recette librement — ingrédients, cuisson, temps…<br>L'IA remplira tous les champs automatiquement.</div>
+        <button class="mic-btn" id="mic-btn" onclick="toggleMic()">🎙</button>
+        <div class="voice-transcript" id="voice-transcript"></div>
+        <div class="voice-status" id="voice-status"></div>
+      </div>
+      <div class="divider"><div class="divider-line"></div><div class="divider-text">OU MANUELLEMENT</div><div class="divider-line"></div></div>
+
+      <div>
+        <div class="field-label">Photo du plat</div>
+        <div class="upload-zone" id="upload-zone" onclick="document.getElementById('photo-input').click()">
+          <input type="file" id="photo-input" accept="image/*" onchange="handlePhoto(event)">
+          <div style="font-size:24px;opacity:0.5;">📷</div>
+          <div class="upload-label">Appuyer pour ajouter une photo</div>
+        </div>
+        <img class="photo-preview" id="photo-preview">
+      </div>
+      <div>
+        <div class="field-label">Nom du plat</div>
+        <div class="field-row"><input class="field-input" id="new-title" placeholder="Ex : Poulet rôti aux herbes"><button class="mic-field-btn" id="mic-new-title" onclick="dictate('new-title','mic-new-title','mst-new-title')">🎙</button></div>
+        <div class="mic-field-status" id="mst-new-title"></div>
+      </div>
+      <div>
+        <div class="field-label">Tags</div>
+        <div class="field-row"><input class="field-input" id="new-tags" placeholder="poisson, chef, familial…"><button class="mic-field-btn" id="mic-new-tags" onclick="dictate('new-tags','mic-new-tags','mst-new-tags')">🎙</button></div>
+        <div class="mic-field-status" id="mst-new-tags"></div>
+      </div>
+      <div>
+        <div class="field-label">Temps de préparation</div>
+        <div class="time-row">
+          <input class="time-input" type="number" id="new-preptime" placeholder="30" min="1" max="999">
+          <span class="time-unit">min</span>
+        </div>
+      </div>
+      <div>
+        <div class="field-label">Description courte</div>
+        <div class="field-row"><input class="field-input" id="new-desc" placeholder="Accompagnements, sauce…"><button class="mic-field-btn" id="mic-new-desc" onclick="dictate('new-desc','mic-new-desc','mst-new-desc')">🎙</button></div>
+        <div class="mic-field-status" id="mst-new-desc"></div>
+      </div>
+      <div>
+        <div class="field-label">Ingrédients (un par ligne)</div>
+        <div class="field-row"><textarea class="field-input" id="new-ingredients" rows="4" placeholder="500g cabillaud&#10;Persil plat…"></textarea><button class="mic-field-btn" id="mic-new-ingredients" onclick="dictate('new-ingredients','mic-new-ingredients','mst-new-ingredients')" style="margin-top:1px;">🎙</button></div>
+        <div class="mic-field-status" id="mst-new-ingredients"></div>
+      </div>
+      <div>
+        <div class="field-label">Étapes</div>
+        <div class="field-row"><textarea class="field-input" id="new-steps" rows="5" placeholder="1. Préparer la salsa verde…"></textarea><button class="mic-field-btn" id="mic-new-steps" onclick="dictate('new-steps','mic-new-steps','mst-new-steps')" style="margin-top:1px;">🎙</button></div>
+        <div class="mic-field-status" id="mst-new-steps"></div>
+      </div>
+      <div><div class="field-label">Note</div><div class="new-stars-row" id="new-stars-row"></div></div>
+      <button class="btn-save" onclick="saveRecipe()">Enregistrer la recette</button>
+    </div>
+  </div>
+
+  <!-- EDIT -->
+  <div class="screen" id="screen-edit">
+    <div class="add-header">
+      <button class="add-back" onclick="goTo('screen-detail')">←</button>
+      <div class="add-header-title">Modifier la <span>recette</span></div>
+    </div>
+    <div class="add-body">
+      <div>
+        <div class="field-label">Photo du plat</div>
+        <div class="upload-zone" id="edit-upload-zone" onclick="document.getElementById('edit-photo-input').click()">
+          <input type="file" id="edit-photo-input" accept="image/*" onchange="handleEditPhoto(event)">
+          <div style="font-size:24px;opacity:0.5;">📷</div>
+          <div class="upload-label">Appuyer pour changer la photo</div>
+        </div>
+        <img class="photo-preview" id="edit-photo-preview">
+      </div>
+      <div><div class="field-label">Nom du plat</div><input class="field-input" id="edit-title" placeholder="Ex : Poulet rôti aux herbes"></div>
+      <div><div class="field-label">Tags</div><input class="field-input" id="edit-tags" placeholder="poisson, chef, familial…"></div>
+      <div>
+        <div class="field-label">Temps de préparation</div>
+        <div class="time-row">
+          <input class="time-input" type="number" id="edit-preptime" placeholder="30" min="1" max="999">
+          <span class="time-unit">min</span>
+        </div>
+      </div>
+      <div><div class="field-label">Description courte</div><input class="field-input" id="edit-desc" placeholder="Accompagnements, sauce…"></div>
+      <div><div class="field-label">Ingrédients (un par ligne)</div><textarea class="field-input" id="edit-ingredients" rows="5" placeholder="500g cabillaud&#10;Persil plat…"></textarea></div>
+      <div><div class="field-label">Étapes</div><textarea class="field-input" id="edit-steps" rows="6" placeholder="1. Préparer la salsa verde…"></textarea></div>
+      <div><div class="field-label">Note</div><div class="new-stars-row" id="edit-stars-row"></div></div>
+      <button class="btn-save" onclick="saveEdit()">Enregistrer les modifications</button>
+      <button class="btn-delete" onclick="deleteRecipe()">Supprimer cette recette</button>
+    </div>
+  </div>
+
+  <!-- SETTINGS -->
+  <div class="screen" id="screen-settings">
+    <div class="add-header" style="padding-bottom:16px;">
+      <button class="add-back" onclick="goTo('screen-home')">←</button>
+      <div class="add-header-title">Réglages</div>
+    </div>
+    <div class="settings-body">
+      <div>
+        <div class="settings-section-label">Dictée vocale</div>
+        <div class="settings-card">
+          <div class="settings-desc">Chaque champ du formulaire dispose d'un bouton 🎙 — appuie dessus, dicte, appuie sur ⏹ pour terminer. Fonctionne sans connexion ni clé API.</div>
+          <div class="settings-key-saved" style="display:flex;">
+            <div class="settings-key-saved-dot"></div>
+            <div class="settings-key-saved-text">Dictée vocale — active</div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="settings-section-label">Sauvegarde</div>
+        <div class="settings-card">
+          <div class="settings-desc">Exporte tes recettes en fichier JSON pour les sauvegarder ou les restaurer après un changement de téléphone ou un vidage de cache.</div>
+          <button class="settings-btn" onclick="exportRecipes()">⬇ Exporter mes recettes</button>
+          <div style="margin-top:6px;">
+            <label class="settings-btn" style="display:block;text-align:center;cursor:pointer;background:var(--bg3);color:var(--text2);border:0.5px solid var(--border);">
+              ⬆ Importer des recettes
+              <input type="file" accept=".json" onchange="importRecipes(event)" style="display:none;">
+            </label>
+          </div>
+          <div class="settings-key-status" id="import-status"></div>
+        </div>
+      </div>
+    </div>
+    <div class="nav-bar">
+      <button class="nav-item" onclick="goTo('screen-home')"><div class="nav-icon">🍽</div><div class="nav-label">Recettes</div></button>
+      <button class="nav-item active"><div class="nav-icon">⚙️</div><div class="nav-label" style="color:var(--purple-light)">Réglages</div></button>
+    </div>
+  </div>
+
+</div>
+
+<div class="install-banner" id="install-banner">
+  <div class="install-banner-text">📲 <strong>Ajouter à l'écran d'accueil</strong><br>Appuie sur <strong>Partager</strong> puis <strong>"Sur l'écran d'accueil"</strong> pour l'utiliser comme une vraie app.</div>
+  <div class="install-banner-row">
+    <button class="install-close" onclick="document.getElementById('install-banner').classList.remove('show')">✕</button>
+  </div>
+</div>
+
+<script>
+// ── STORAGE ──
+function loadRecipes() {
+  try { return JSON.parse(localStorage.getItem('recipes') || '[]'); } catch(e) { return []; }
+}
+function saveRecipes(r) {
+  try { localStorage.setItem('recipes', JSON.stringify(r)); } catch(e) {}
+}
+let recipes = loadRecipes();
+let currentIdx = 0, newRating = 0, newPhotoData = null;
+
+
+
+
+// ── VOCAL IA ──
+let recognition = null, isListening = false;
+
+function toggleMic() {
+  if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+    setVoiceStatus('Micro non supporté', 'error'); return;
+  }
+  if (isListening) { recognition.stop(); return; }
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  recognition = new SR();
+  recognition.lang = 'fr-FR';
+  recognition.continuous = true;
+  recognition.interimResults = true;
+  const btn = document.getElementById('mic-btn');
+  const transcript = document.getElementById('voice-transcript');
+  recognition.onstart = () => {
+    isListening = true; btn.classList.add('listening'); btn.textContent = '⏹';
+    transcript.style.display = 'block'; transcript.textContent = '...';
+    setVoiceStatus('Écoute… appuie sur ⏹ pour terminer');
+  };
+  recognition.onresult = (e) => {
+    transcript.textContent = Array.from(e.results).map(r => r[0].transcript).join('');
+  };
+  recognition.onend = () => {
+    isListening = false; btn.classList.remove('listening'); btn.textContent = '🎙';
+    const t = document.getElementById('voice-transcript').textContent;
+    if (t && t !== '...') {
+      setVoiceStatus('Analyse par l\'IA <span class="dots"><span>.</span><span>.</span><span>.</span></span>');
+      sendToAI(t);
+    } else {
+      setVoiceStatus('Rien capté, réessaie.', 'error');
+    }
+  };
+  recognition.onerror = (e) => {
+    isListening = false; btn.classList.remove('listening'); btn.textContent = '🎙';
+    const msgs = {'not-allowed':'Autorise le micro.','no-speech':'Rien capté.','network':'Erreur réseau.'};
+    setVoiceStatus(msgs[e.error] || 'Erreur : ' + e.error, 'error');
+  };
+  recognition.start();
+}
+
+function setVoiceStatus(msg, type='') {
+  const el = document.getElementById('voice-status');
+  el.className = 'voice-status' + (type ? ' ' + type : '');
+  el.innerHTML = msg;
+}
+
+async function sendToAI(transcript) {
+  try {
+    const prompt = `Tu es un assistant culinaire expert. À partir de cette description orale d'une recette, retourne UNIQUEMENT un JSON valide, sans markdown, sans explication.\n\nFormat:\n{"title":"Nom du plat","tags":["tag1","tag2"],"desc":"Description courte","preptime":30,"ingredients":["ingrédient 1"],"steps":["Étape 1"]}\n\nTags possibles: poisson, viande, légumes, chef, familial. Crée d'autres tags si pertinent.\npreptime = nombre entier de minutes.\n\nDescription: "${transcript}"`;
+    const res = await fetch('/.netlify/functions/gemini', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt })
+    });
+    const data = await res.json();
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    const parsed = JSON.parse(text.replace(/```json|```/g,'').trim());
+    fillFields(parsed);
+    setVoiceStatus('✓ Champs remplis automatiquement !', 'success');
+    document.getElementById('voice-transcript').style.display = 'none';
+  } catch(e) {
+    setVoiceStatus('Erreur IA — réessaie.', 'error');
+  }
+}
+
+function fillFields(d) {
+  if(d.title) document.getElementById('new-title').value = d.title;
+  if(d.tags) document.getElementById('new-tags').value = d.tags.join(', ');
+  if(d.desc) document.getElementById('new-desc').value = d.desc;
+  if(d.preptime) document.getElementById('new-preptime').value = d.preptime;
+  if(d.ingredients) document.getElementById('new-ingredients').value = d.ingredients.join('\n');
+  if(d.steps) document.getElementById('new-steps').value = d.steps.join('\n');
+}
+
+// ── DICTATION PAR CHAMP ──
+let currentRecognition = null;
+
+function dictate(inputId, btnId, statusId) {
+  if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+    const st = document.getElementById(statusId);
+    st.textContent = 'Non supporté'; st.className = 'mic-field-status on'; return;
+  }
+  if (currentRecognition) {
+    currentRecognition.stop();
+    if (document.getElementById(btnId).classList.contains('listening')) return;
+  }
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const r = new SR();
+  r.lang = 'fr-FR';
+  r.continuous = true;
+  r.interimResults = true;
+  const input = document.getElementById(inputId);
+  const btn = document.getElementById(btnId);
+  const st = document.getElementById(statusId);
+  currentRecognition = r;
+  r.onstart = () => { btn.classList.add('listening'); btn.textContent='⏹'; st.textContent='Écoute… ⏹ pour terminer'; st.className='mic-field-status on'; };
+  r.onresult = (e) => { input.value = Array.from(e.results).map(r=>r[0].transcript).join(''); };
+  r.onend = () => { btn.classList.remove('listening'); btn.textContent='🎙'; st.textContent = input.value ? '✓ Enregistré' : ''; st.className = input.value ? 'mic-field-status ok' : 'mic-field-status'; currentRecognition = null; };
+  r.onerror = (e) => { btn.classList.remove('listening'); btn.textContent='🎙'; const msgs={'not-allowed':'Autorise le micro.','no-speech':'Rien capté.'}; st.textContent=msgs[e.error]||'Erreur'; st.className='mic-field-status on'; currentRecognition=null; };
+  r.start();
+}
+
+// ── EXPORT / IMPORT ──
+function exportRecipes() {
+  const data = JSON.stringify(recipes, null, 2);
+  const blob = new Blob([data], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const now = new Date();
+  a.href = url;
+  a.download = `mes-recettes-${now.toISOString().slice(0,10)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+function importRecipes(e) {
+  const file = e.target.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const imported = JSON.parse(ev.target.result);
+      if (!Array.isArray(imported)) throw new Error();
+      const merged = [...recipes];
+      let added = 0;
+      imported.forEach(r => {
+        if (!merged.find(m => m.title === r.title)) { merged.push(r); added++; }
+      });
+      recipes = merged;
+      saveRecipes(recipes);
+      renderFeed();
+      const st = document.getElementById('import-status');
+      st.className = 'settings-key-status success';
+      st.textContent = `✓ ${added} recette(s) importée(s)`;
+    } catch(err) {
+      const st = document.getElementById('import-status');
+      st.className = 'settings-key-status';
+      st.style.color = '#EF4444';
+      st.textContent = 'Fichier invalide';
+    }
+  };
+  reader.readAsText(file);
+}
+
+// ── LIGHTBOX ──
+function openLightbox() {
+  const r = recipes[currentIdx];
+  if (!r.photoData) return;
+  document.getElementById('lightbox-img').src = r.photoData;
+  document.getElementById('lightbox').classList.add('open');
+}
+function closeLightbox() {
+  document.getElementById('lightbox').classList.remove('open');
+}
+
+// ── TAGS DYNAMIQUES ──
+const DEFAULT_TAGS = ['poisson','viande','chef','familial','légumes'];
+function renderFilterTags() {
+  const allTags = new Set(DEFAULT_TAGS);
+  recipes.forEach(r => (r.tags||[]).forEach(t => allTags.add(t.toLowerCase().trim())));
+  const row = document.getElementById('filter-row');
+  const activePill = row.querySelector('.pill.active');
+  const activeTag = activePill ? activePill.dataset.tag || '' : '';
+  row.innerHTML = '';
+  ['', ...allTags].forEach(tag => {
+    const btn = document.createElement('button');
+    btn.className = 'pill' + (tag === activeTag ? ' active' : '');
+    btn.dataset.tag = tag;
+    btn.textContent = tag === '' ? 'Tout' : tag.charAt(0).toUpperCase() + tag.slice(1);
+    btn.onclick = () => filterTag(tag, btn);
+    row.appendChild(btn);
+  });
+}
+
+// ── NAVIGATION ──
+function goToSettings() { goTo('screen-settings'); }
+function goToHome() { goTo('screen-home'); }
+
+// ── EDIT ──
+let editRating = 0, editPhotoData = null;
+
+function openEdit(idx) {
+  currentIdx = idx;
+  const r = recipes[idx];
+  editRating = r.rating || 0;
+  editPhotoData = r.photoData || null;
+
+  document.getElementById('edit-title').value = r.title || '';
+  document.getElementById('edit-tags').value = (r.tags||[]).join(', ');
+  document.getElementById('edit-preptime').value = r.preptime || '';
+  document.getElementById('edit-desc').value = r.desc || '';
+  document.getElementById('edit-ingredients').value = (r.ingredients||[]).join('\n');
+  document.getElementById('edit-steps').value = (r.steps||[]).join('\n');
+
+  const prev = document.getElementById('edit-photo-preview');
+  const zone = document.getElementById('edit-upload-zone');
+  if (editPhotoData) { prev.src = editPhotoData; prev.style.display='block'; zone.style.display='none'; }
+  else { prev.style.display='none'; zone.style.display='flex'; }
+
+  buildEditStars(editRating);
+  goTo('screen-edit');
+}
+
+function buildEditStars(current) {
+  const row = document.getElementById('edit-stars-row'); row.innerHTML = '';
+  for (let i=1; i<=5; i++) {
+    const b = document.createElement('button'); b.className='new-star-btn';
+    b.textContent = i<=current ? '★':'☆';
+    b.style.color = i<=current ? '#F59E0B':'rgba(255,255,255,0.2)';
+    b.onclick = () => { editRating=i; buildEditStars(i); };
+    row.appendChild(b);
+  }
+}
+
+function handleEditPhoto(e) {
+  const file = e.target.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    editPhotoData = ev.target.result;
+    const prev = document.getElementById('edit-photo-preview');
+    prev.src = editPhotoData; prev.style.display='block';
+    document.getElementById('edit-upload-zone').style.display='none';
+  };
+  reader.readAsDataURL(file);
+}
+
+function saveEdit() {
+  const title = document.getElementById('edit-title').value.trim(); if (!title) return;
+  const tags = document.getElementById('edit-tags').value.split(',').map(t=>t.trim()).filter(Boolean);
+  recipes[currentIdx] = {
+    ...recipes[currentIdx],
+    title,
+    tags,
+    desc: document.getElementById('edit-desc').value.trim(),
+    preptime: parseInt(document.getElementById('edit-preptime').value)||0,
+    ingredients: document.getElementById('edit-ingredients').value.split('\n').filter(Boolean),
+    steps: document.getElementById('edit-steps').value.split('\n').filter(Boolean),
+    rating: editRating,
+    photoData: editPhotoData
+  };
+  saveRecipes(recipes);
+  openDetail(currentIdx);
+}
+
+function deleteRecipe() {
+  if (!confirm('Supprimer cette recette ?')) return;
+  recipes.splice(currentIdx, 1);
+  saveRecipes(recipes);
+  goTo('screen-home');
+}
+
+// ── NAV ──
+function goTo(id) {
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  if(id==='screen-home') renderFeed();
+  if(id==='screen-add'){newRating=0;newPhotoData=null;buildNewStars();resetAddForm();}
+  window.scrollTo(0,0);
+}
+function starsStr(n,t=5){return Array.from({length:t},(_,i)=>i<n?'★':'☆').join('');}
+function heroGrad(tags){
+  if(tags.includes('poisson')) return 'linear-gradient(135deg,#0f2a3d,#1a4a6e)';
+  if(tags.includes('viande')) return 'linear-gradient(135deg,#2d0a0a,#5a1a1a)';
+  if(tags.includes('familial')) return 'linear-gradient(135deg,#1a1a0a,#3d3010)';
+  return 'linear-gradient(135deg,#1a1040,#2d1a5e)';
+}
+
+function renderFeed() {
+  const feed = document.getElementById('feed');
+  if (recipes.length === 0) {
+    feed.innerHTML = '<div class="empty-state"><div class="icon">🍽</div><p>Aucune recette pour l\'instant.<br>Appuie sur <strong>+</strong> pour ajouter ta première recette.</p></div>';
+    updateStats(); return;
+  }
+  feed.innerHTML = '';
+  recipes.forEach((r,idx) => {
+    const card = document.createElement('div'); card.className='recipe-card'; card.dataset.tags=r.tags.join(','); card.onclick=()=>openDetail(idx);
+    const hero = r.photoData ? `<img class="card-hero-img" src="${r.photoData}" alt="">` : `<div class="card-hero-placeholder" style="background:${heroGrad(r.tags)};">${r.tags.includes('poisson')?'🐟':r.tags.includes('viande')?'🥩':'🍽'}</div>`;
+    card.innerHTML=`<div class="card-hero">${hero}<div class="card-hero-overlay"></div>${r.rating?`<div class="card-hero-rating">${starsStr(r.rating)}</div>`:''}<div class="card-hero-tags">${r.tags.map(t=>`<span class="card-tag">${t}</span>`).join('')}</div></div><div class="card-body"><div class="card-title">${r.title}</div><div class="card-desc">${r.desc}</div><div class="card-foot"><span class="card-date">${r.date}</span><span class="card-stars">${r.rating?starsStr(r.rating):'Non noté'}</span></div></div>`;
+    feed.appendChild(card);
+  });
+  updateStats();
+  applyFilters();
+  renderFilterTags();
+}
+function updateStats(){
+  document.getElementById('stat-count').textContent=recipes.length;
+  const tc={};recipes.forEach(r=>r.tags.forEach(t=>tc[t]=(tc[t]||0)+1));
+  const top=Object.entries(tc).sort((a,b)=>b[1]-a[1])[0];
+  document.getElementById('stat-top').textContent=top?top[0]:'–';
+}
+function openDetail(idx){
+  currentIdx=idx; const r=recipes[idx];
+  document.getElementById('d-title').textContent=r.title;
+  document.getElementById('d-tags').innerHTML=(r.tags||[]).map(t=>`<span class="card-tag">${t}</span>`).join('');
+  refreshDetailHero(r);
+  document.getElementById('d-ing-count').textContent=(r.ingredients||[]).length+' items';
+  document.getElementById('d-ingredients').innerHTML=(r.ingredients||[]).map(i=>`<div class="ing-item"><div class="ing-dot"></div>${i}</div>`).join('');
+  document.getElementById('d-steps').innerHTML=(r.steps||[]).map((s,i)=>`<div class="step-item"><div class="step-num">${i+1}</div><div class="step-text">${s}</div></div>`).join('');
+  document.getElementById('rating-confirm').textContent='';
+  // meta chips (temps, nb ingrédients)
+  const meta = document.getElementById('d-meta');
+  meta.innerHTML = '';
+  if (r.preptime) meta.innerHTML += `<div class="meta-chip">⏱ ${r.preptime} min</div>`;
+  meta.innerHTML += `<div class="meta-chip">🧂 ${(r.ingredients||[]).length} ingrédients</div>`;
+  buildDetailStars(r.rating||0);
+  goTo('screen-detail');
+}
+function refreshDetailHero(r){
+  const dImg=document.getElementById('d-img'),dPh=document.getElementById('d-placeholder');
+  const expandBtn=document.getElementById('detail-expand-btn');
+  if(r.photoData){
+    dImg.src=r.photoData;dImg.style.display='block';dPh.style.display='none';
+    if(expandBtn) expandBtn.style.display='flex';
+  } else {
+    dImg.style.display='none';
+    Object.assign(dPh.style,{display:'flex',background:heroGrad(r.tags),alignItems:'center',justifyContent:'center',fontSize:'80px'});
+    dPh.textContent=r.tags.includes('poisson')?'🐟':r.tags.includes('viande')?'🥩':'🍽';
+    if(expandBtn) expandBtn.style.display='none';
+  }
+}
+function buildDetailStars(current){
+  const c=document.getElementById('detail-stars'); c.innerHTML='';
+  for(let i=1;i<=5;i++){
+    const b=document.createElement('button'); b.className='star-btn'; b.textContent=i<=current?'★':'☆'; b.style.color=i<=current?'#F59E0B':'rgba(255,255,255,0.15)';
+    b.onclick=()=>{recipes[currentIdx].rating=i;saveRecipes(recipes);buildDetailStars(i);document.getElementById('rating-confirm').textContent=`✓ Note enregistrée · ${i}/5`;renderFeed();};
+    c.appendChild(b);
+  }
+  document.getElementById('detail-stars-sub').textContent=current?`${current} / 5`:'/ 5';
+}
+function buildNewStars(){
+  const row=document.getElementById('new-stars-row'); row.innerHTML='';
+  for(let i=1;i<=5;i++){
+    const b=document.createElement('button'); b.className='new-star-btn'; b.textContent=i<=newRating?'★':'☆'; b.style.color=i<=newRating?'#F59E0B':'rgba(255,255,255,0.2)';
+    b.onclick=()=>{newRating=i;buildNewStars();}; row.appendChild(b);
+  }
+}
+function handlePhoto(e){
+  const file=e.target.files[0]; if(!file) return;
+  const reader=new FileReader(); reader.onload=ev=>{newPhotoData=ev.target.result;const p=document.getElementById('photo-preview');p.src=newPhotoData;p.style.display='block';document.getElementById('upload-zone').style.display='none';}; reader.readAsDataURL(file);
+}
+function resetAddForm(){
+  ['new-title','new-tags','new-preptime','new-desc','new-ingredients','new-steps'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('photo-preview').style.display='none';
+  document.getElementById('upload-zone').style.display='flex';
+  document.getElementById('photo-input').value='';
+  ['mst-new-title','mst-new-tags','mst-new-desc','mst-new-ingredients','mst-new-steps'].forEach(id=>{ const el=document.getElementById(id); if(el){el.textContent='';el.className='mic-field-status';} });
+  const vt = document.getElementById('voice-transcript');
+  if(vt){ vt.style.display='none'; vt.textContent=''; }
+  setVoiceStatus('');
+}
+function saveRecipe(){
+  const title=document.getElementById('new-title').value.trim(); if(!title) return;
+  const tags=document.getElementById('new-tags').value.split(',').map(t=>t.trim()).filter(Boolean);
+  const preptime=parseInt(document.getElementById('new-preptime').value)||0;
+  const now=new Date(); const months=['Jan.','Fév.','Mar.','Avr.','Mai','Jun.','Jul.','Aoû.','Sep.','Oct.','Nov.','Déc.'];
+  recipes.push({title,tags,desc:document.getElementById('new-desc').value.trim(),date:months[now.getMonth()]+' '+now.getFullYear(),rating:newRating,photoData:newPhotoData,preptime,ingredients:document.getElementById('new-ingredients').value.split('\n').filter(Boolean),steps:document.getElementById('new-steps').value.split('\n').filter(Boolean)});
+  saveRecipes(recipes); goTo('screen-home');
+}
+let activeTagFilter = '';
+
+function filterTag(tag, el) {
+  activeTagFilter = tag;
+  document.querySelectorAll('.pill').forEach(p=>p.classList.remove('active'));
+  el.classList.add('active');
+  applyFilters();
+}
+
+function filterCards(val) {
+  applyFilters(val);
+}
+
+function applyFilters(searchVal) {
+  const val = (searchVal !== undefined ? searchVal : document.querySelector('.search').value).toLowerCase();
+  document.querySelectorAll('.recipe-card').forEach(c => {
+    const tags = (c.dataset.tags || '').split(',').map(t => t.trim().toLowerCase());
+    const title = c.querySelector('.card-title').textContent.toLowerCase();
+    const matchTag = !activeTagFilter || tags.includes(activeTagFilter.toLowerCase());
+    const matchSearch = !val || title.includes(val);
+    c.style.display = (matchTag && matchSearch) ? '' : 'none';
+  });
+}
+
+// iOS install banner
+function checkInstallBanner(){
+  const isIOS=/iphone|ipad|ipod/i.test(navigator.userAgent);
+  const isInApp=window.navigator.standalone;
+  const shown=localStorage.getItem('install-shown');
+  if(isIOS && !isInApp && !shown){ document.getElementById('install-banner').classList.add('show'); localStorage.setItem('install-shown','1'); }
+}
+
+// PWA service worker
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('sw.js').catch(()=>{});
+}
+
+renderFeed();
+buildNewStars();
+checkInstallBanner();
+renderFilterTags();
+</script>
+</body>
+</html>
